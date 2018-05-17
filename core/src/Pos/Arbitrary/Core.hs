@@ -39,7 +39,6 @@ import           Test.QuickCheck.Instances ()
 
 import           Pos.Binary.Class (Bi)
 import           Pos.Binary.Core ()
-import           Pos.Binary.Crypto ()
 import           Pos.Core.Common (coinToInteger, divCoin, makeAddress, maxCoinVal, unsafeSubCoin)
 import qualified Pos.Core.Common.Fee as Fee
 import qualified Pos.Core.Common.Types as Types

@@ -14,7 +14,6 @@ import qualified Data.ByteString as BS
 import           Hedgehog (Property)
 import qualified Hedgehog as H
 
-import           Pos.Aeson.Crypto ()
 import           Pos.Crypto (PassPhrase, PublicKey (..), Secret, SecretKey (..), SecretProof,
                              deriveHDPassphrase, deterministicVssKeyGen, packHDAddressAttr,
                              redeemDeterministicKeyGen, toVssPublicKey)

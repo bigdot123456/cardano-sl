@@ -70,7 +70,6 @@ import           Serokell.Util (mapJson)
 
 import           Pos.Binary.Class (Bi, biSize)
 import qualified Pos.Binary.Class as Bi
-import           Pos.Binary.Crypto ()
 import           Pos.Core.Common.Coin ()
 import           Pos.Core.Common.Types (AddrAttributes (..), AddrSpendingData (..),
                                         AddrStakeDistribution (..), AddrType (..), Address (..),

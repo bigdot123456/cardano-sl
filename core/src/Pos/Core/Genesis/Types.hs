@@ -35,7 +35,6 @@ import           Fmt (genericF)
 import           Formatting (bprint, build, fixed, int, (%))
 import           Serokell.Util (allDistinct, mapJson)
 
-import           Pos.Binary.Crypto ()
 import           Pos.Core.Common (Address, Coin, CoinPortion, SharedSeed, StakeholderId)
 import           Pos.Core.Delegation (ProxySKHeavy)
 import           Pos.Core.ProtocolConstants (ProtocolConstants (..), VssMaxTTL (..), VssMinTTL (..))
