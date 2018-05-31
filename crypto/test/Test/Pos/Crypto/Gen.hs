@@ -7,10 +7,10 @@ module Test.Pos.Crypto.Gen
         , genSignTag
 
         -- Key Generators
-        , genKeypair
-        , genPublicKey
-        , genSecretKey
-        , genEncryptedSecretKey
+        , keypairs
+        , publicKeys
+        , secretKeys
+        , encryptedSecretKeys
 
         -- Redeem Key Generators
         , genRedeemKeypair
@@ -41,7 +41,7 @@ module Test.Pos.Crypto.Gen
         , genAbstractHash
 
         -- Passphrase Generators
-        , genPassPhrase
+        , passPhrases
 
         -- HD Generators
         , genHDPassphrase
@@ -58,26 +58,19 @@ import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
 import           Pos.Binary.Class (Bi)
-import           Pos.Crypto (AbstractHash (..), PassPhrase,
-                             abstractHash)
+import           Pos.Crypto (AbstractHash (..), PassPhrase, abstractHash)
 import           Pos.Crypto.Configuration (ProtocolMagic (..))
 import           Pos.Crypto.HD (HDAddressPayload (..), HDPassphrase (..))
 import           Pos.Crypto.Random (deterministic)
-import           Pos.Crypto.SecretSharing (EncShare, Secret, SecretProof,
-                                           VssKeyPair, VssPublicKey,
-                                           deterministicVssKeyGen,
-                                           genSharedSecret, toVssPublicKey)
-import           Pos.Crypto.Signing (EncryptedSecretKey, ProxyCert,
-                                     ProxySecretKey, ProxySignature, PublicKey,
-                                     SafeSigner (..), SecretKey, Signature,
-                                     Signed, SignTag (..), deterministicKeyGen,
-                                     mkSigned, noPassEncrypt, proxySign,
-                                     safeCreateProxyCert, safeCreatePsk, sign,
+import           Pos.Crypto.SecretSharing (EncShare, Secret, SecretProof, VssKeyPair, VssPublicKey,
+                                           deterministicVssKeyGen, genSharedSecret, toVssPublicKey)
+import           Pos.Crypto.Signing (EncryptedSecretKey, ProxyCert, ProxySecretKey, ProxySignature,
+                                     PublicKey, SafeSigner (..), SecretKey, SignTag (..), Signature,
+                                     Signed, deterministicKeyGen, mkSigned, noPassEncrypt,
+                                     proxySign, safeCreateProxyCert, safeCreatePsk, sign,
                                      signEncoded)
-import           Pos.Crypto.Signing.Redeem (RedeemPublicKey, RedeemSecretKey,
-                                            RedeemSignature,
-                                            redeemDeterministicKeyGen,
-                                            redeemSign)
+import           Pos.Crypto.Signing.Redeem (RedeemPublicKey, RedeemSecretKey, RedeemSignature,
+                                            redeemDeterministicKeyGen, redeemSign)
 
 ----------------------------------------------------------------------------
 -- Protocol Magic Generator
@@ -109,17 +102,17 @@ genSignTag = Gen.element
 -- Key Generators
 ----------------------------------------------------------------------------
 
-genKeypair :: Gen (PublicKey, SecretKey)
-genKeypair = deterministicKeyGen <$> gen32Bytes
+keypairs :: Gen (PublicKey, SecretKey)
+keypairs = deterministicKeyGen <$> gen32Bytes
 
-genPublicKey :: Gen PublicKey
-genPublicKey =  fst <$> genKeypair
+publicKeys :: Gen PublicKey
+publicKeys =  fst <$> keypairs
 
-genSecretKey :: Gen SecretKey
-genSecretKey = snd <$> genKeypair
+secretKeys :: Gen SecretKey
+secretKeys = snd <$> keypairs
 
-genEncryptedSecretKey :: Gen EncryptedSecretKey
-genEncryptedSecretKey = noPassEncrypt <$> genSecretKey
+encryptedSecretKeys :: Gen EncryptedSecretKey
+encryptedSecretKeys = noPassEncrypt <$> secretKeys
 
 ----------------------------------------------------------------------------
 -- Redeem Key Generators
@@ -158,11 +151,11 @@ genVssPublicKey = toVssPublicKey <$> genVssKeyPair
 
 genProxyCert :: Bi w => ProtocolMagic -> Gen w -> Gen (ProxyCert w)
 genProxyCert pm genW =
-    safeCreateProxyCert pm <$> genSafeSigner <*> genPublicKey <*> genW
+    safeCreateProxyCert pm <$> genSafeSigner <*> publicKeys <*> genW
 
 genProxySecretKey :: Bi w => ProtocolMagic -> Gen w -> Gen (ProxySecretKey w)
 genProxySecretKey pm genW =
-    safeCreatePsk pm <$> genSafeSigner <*> genPublicKey <*> genW
+    safeCreatePsk pm <$> genSafeSigner <*> publicKeys <*> genW
 
 genProxySignature
     :: (Bi w, Bi a)
@@ -172,7 +165,7 @@ genProxySignature
     -> Gen (ProxySignature w a)
 genProxySignature pm genA genW = do
     st  <- genSignTag
-    sk  <- genSecretKey
+    sk  <- secretKeys
     psk <- genProxySecretKey pm genW
     a   <- genA
     return $ proxySign pm st sk psk a
@@ -182,15 +175,15 @@ genProxySignature pm genA genW = do
 ----------------------------------------------------------------------------
 
 genSignature :: Bi a => ProtocolMagic -> Gen a -> Gen (Signature a)
-genSignature pm genA = sign pm <$> genSignTag <*> genSecretKey <*> genA
+genSignature pm genA = sign pm <$> genSignTag <*> secretKeys <*> genA
 
 genSignatureEncoded :: ProtocolMagic -> Gen ByteString -> Gen (Signature a)
 genSignatureEncoded pm genB =
-    signEncoded pm <$> genSignTag <*> genSecretKey <*> genB
+    signEncoded pm <$> genSignTag <*> secretKeys <*> genB
 
 genSigned :: Bi a => ProtocolMagic -> Gen a -> Gen (Signed a)
 genSigned pm genA =
-    mkSigned pm <$> genSignTag <*> genSecretKey <*> genA
+    mkSigned pm <$> genSignTag <*> secretKeys <*> genA
 
 genRedeemSignature
     ::  Bi a
@@ -235,8 +228,8 @@ genAbstractHash genA = abstractHash <$> genA
 -- Passphrase Generators
 ----------------------------------------------------------------------------
 
-genPassPhrase :: Gen PassPhrase
-genPassPhrase = ByteArray.pack <$> genWord8List
+passPhrases :: Gen PassPhrase
+passPhrases = ByteArray.pack <$> genWord8List
   where
     genWord8List :: Gen [Word8]
     genWord8List =
@@ -262,4 +255,4 @@ gen32Bytes :: Gen ByteString
 gen32Bytes = genBytes 32
 
 genSafeSigner :: Gen SafeSigner
-genSafeSigner = FakeSigner <$> genSecretKey
+genSafeSigner = FakeSigner <$> secretKeys
