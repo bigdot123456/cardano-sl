@@ -15,13 +15,22 @@ import           Hedgehog (Property)
 import qualified Hedgehog as H
 
 import           Pos.Aeson.Crypto ()
-import           Pos.Crypto (HDAddressPayload, PassPhrase, PublicKey (..), RedeemPublicKey,
-                             RedeemSecretKey, Secret, SecretKey (..), SecretProof, VssPublicKey)
+import           Pos.Crypto (PassPhrase, ProtocolMagic (..), PublicKey (..), Secret, SecretKey (..),
+                             SecretProof, deriveHDPassphrase, deterministicVssKeyGen, hash,
+                             packHDAddressAttr, redeemDeterministicKeyGen, toVssPublicKey)
 
 import           Test.Pos.Crypto.Gen
 import           Test.Pos.Crypto.TempHelpers (discoverGolden, discoverRoundTrip, eachOf,
                                               goldenTestBi, roundTripsAesonBuildable,
-                                              roundTripsBiBuildable, roundTripsBiShow)
+                                              roundTripsAesonShow, roundTripsBiBuildable,
+                                              roundTripsBiShow)
+
+--------------------------------------------------------------------------------
+-- ProtocolMagic
+--------------------------------------------------------------------------------
+
+roundTripProtocolMagicAeson :: Property
+roundTripProtocolMagicAeson = eachOf 1000 protocolMagics roundTripsAesonShow
 
 --------------------------------------------------------------------------------
 -- PublicKey
@@ -51,6 +60,24 @@ roundTripSecretKeyBi :: Property
 roundTripSecretKeyBi = eachOf 1000 secretKeys roundTripsBiBuildable
 
 --------------------------------------------------------------------------------
+-- Signature
+--------------------------------------------------------------------------------
+
+roundTripSignatureBi :: Property
+roundTripSignatureBi = eachOf 1000 unitSignatures roundTripsBiBuildable
+  where
+    unitSignatures = signatures (ProtocolMagic 0) (pure ())
+
+--------------------------------------------------------------------------------
+-- Signed
+--------------------------------------------------------------------------------
+
+roundTripSignedBi :: Property
+roundTripSignedBi = eachOf 1000 unitSigneds roundTripsBiShow
+  where
+    unitSigneds = signeds (ProtocolMagic 0) (pure ())
+
+--------------------------------------------------------------------------------
 -- EncryptedSecretKey
 --------------------------------------------------------------------------------
 
@@ -72,42 +99,86 @@ roundTripEncryptedSecretKeysBi = eachOf encryptedSecretKeys roundTripsBiBuildabl
 -- RedeemPublicKey
 --------------------------------------------------------------------------------
 
-todo_golden_RedeemPublicKey :: Property
-todo_golden_RedeemPublicKey = goldenTestBi
-    (error "golden_RedeemPublicKey not yet defined" :: RedeemPublicKey)
-    "test/golden/RedeemPublicKey"
+golden_RedeemPublicKey :: Property
+golden_RedeemPublicKey = goldenTestBi rpk "test/golden/RedeemPublicKey"
+  where
+    Just rpk = fst <$> redeemDeterministicKeyGen (getBytes 0 32)
 
 roundTripRedeemPublicKeyBi :: Property
 roundTripRedeemPublicKeyBi = eachOf 1000 redeemPublicKeys roundTripsBiBuildable
+
+roundTripRedeemPublicKeyAeson :: Property
+roundTripRedeemPublicKeyAeson =
+    eachOf 1000 redeemPublicKeys roundTripsAesonBuildable
 
 --------------------------------------------------------------------------------
 -- RedeemSecretKey
 --------------------------------------------------------------------------------
 
-todo_golden_RedeemSecretKey :: Property
-todo_golden_RedeemSecretKey = goldenTestBi
-    (error "golden_RedeemSecretKey not yet defined" :: RedeemSecretKey)
-    "test/golden/RedeemSecretKey"
+golden_RedeemSecretKey :: Property
+golden_RedeemSecretKey = goldenTestBi rsk "test/golden/RedeemSecretKey"
+  where
+    Just rsk = snd <$> redeemDeterministicKeyGen (getBytes 0 32)
 
 roundTripRedeemSecretKeyBi :: Property
 roundTripRedeemSecretKeyBi = eachOf 1000 redeemSecretKeys roundTripsBiBuildable
 
 --------------------------------------------------------------------------------
+-- RedeemSignature
+--------------------------------------------------------------------------------
+
+roundTripRedeemSignatureBi :: Property
+roundTripRedeemSignatureBi =
+    eachOf 1000 unitRedeemSignatures roundTripsBiBuildable
+  where
+    unitRedeemSignatures = redeemSignatures (ProtocolMagic 0) (pure ())
+
+--------------------------------------------------------------------------------
 -- VssPublicKey
 --------------------------------------------------------------------------------
 
-todo_golden_VssPublicKey :: Property
-todo_golden_VssPublicKey = goldenTestBi
-    (error "golden_VssPublicKey not yet defined" :: VssPublicKey)
-    "test/golden/VssPublicKey"
+golden_VssPublicKey :: Property
+golden_VssPublicKey = goldenTestBi vpk "test/golden/VssPublicKey"
+  where
+    vpk = toVssPublicKey . deterministicVssKeyGen $ getBytes 0 32
 
 roundTripVssPublicKeyBi :: Property
 roundTripVssPublicKeyBi = eachOf 1000 vssPublicKeys roundTripsBiShow
 
 --------------------------------------------------------------------------------
+-- ProxyCert
+--------------------------------------------------------------------------------
+
+roundTripProxyCertBi :: Property
+roundTripProxyCertBi = eachOf 1000 unitProxyCerts roundTripsBiBuildable
+  where
+    unitProxyCerts = proxyCerts (ProtocolMagic 0) (pure ())
+
+--------------------------------------------------------------------------------
+-- ProxySecretKey
+--------------------------------------------------------------------------------
+
+roundTripProxySecretKeyBi :: Property
+roundTripProxySecretKeyBi = eachOf 1000 unitProxySecretKeys roundTripsBiBuildable
+  where
+    unitProxySecretKeys = proxySecretKeys (ProtocolMagic 0) (pure ())
+
+--------------------------------------------------------------------------------
+-- ProxySignature
+--------------------------------------------------------------------------------
+
+-- TODO: This fails with `Irrelevant certificate, so can't just use ()`
+-- roundTripProxySignatureBi :: Property
+-- roundTripProxySignatureBi = eachOf 1000 unitProxySignatures roundTripsBiBuildable
+--   where
+--     unitProxySignatures = proxySignatures (ProtocolMagic 0) (pure ()) (pure ())
+
+--------------------------------------------------------------------------------
 -- Secret
 --------------------------------------------------------------------------------
 
+-- | Not done because the constructor for the underlying `Point` type is not
+--   exposed and there is no deterministic generation function
 todo_golden_Secret :: Property
 todo_golden_Secret = goldenTestBi
     (error "golden_Secret not yet defined" :: Secret)
@@ -120,6 +191,7 @@ roundTripSecretBi = eachOf 100 secrets roundTripsBiShow
 -- SecretProof
 --------------------------------------------------------------------------------
 
+-- | We have a similar problem for this
 todo_golden_SecretProof :: Property
 todo_golden_SecretProof = goldenTestBi
     (error "golden_SecretProof not yet defined" :: SecretProof)
@@ -127,6 +199,17 @@ todo_golden_SecretProof = goldenTestBi
 
 roundTripSecretProofBi :: Property
 roundTripSecretProofBi = eachOf 100 secretProofs roundTripsBiShow
+
+--------------------------------------------------------------------------------
+-- AbstractHash
+--------------------------------------------------------------------------------
+
+golden_AbstractHash :: Property
+golden_AbstractHash = goldenTestBi (hash ()) "test/golden/AbstractHash"
+
+roundTripAbstractHash :: Property
+roundTripAbstractHash =
+  eachOf 1000 (abstractHashes $ pure ()) roundTripsBiBuildable
 
 --------------------------------------------------------------------------------
 -- PassPhrase
@@ -145,13 +228,19 @@ roundTripPassPhraseBi = eachOf 1000 passPhrases roundTripsBiBuildable
 -- HDAddressPayload
 --------------------------------------------------------------------------------
 
-todo_golden_HDAddressPayload :: Property
-todo_golden_HDAddressPayload = goldenTestBi
-    (error "golden_HDAddressPayload not yet defined" :: HDAddressPayload)
-    "test/golden/HDAddressPayload"
+golden_HDAddressPayload :: Property
+golden_HDAddressPayload = goldenTestBi hdap "test/golden/HDAddressPayload"
+  where
+    Right hdap =
+        flip packHDAddressAttr [] . deriveHDPassphrase . PublicKey <$> xpub
+            (getBytes 0 64)
 
 roundTripHDAddressPayloadBi :: Property
 roundTripHDAddressPayloadBi = eachOf 1000 hDAddressPayloads roundTripsBiShow
+
+roundTripHDAddressPayloadAeson :: Property
+roundTripHDAddressPayloadAeson =
+    eachOf 1000 hDAddressPayloads roundTripsAesonShow
 
 --------------------------------------------------------------------------------
 
