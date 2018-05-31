@@ -1,10 +1,10 @@
 module Test.Pos.Crypto.Gen
         (
         -- Protocol Magic Generator
-          genProtocolMagic
+          protocolMagics
 
         -- Sign Tag Generator
-        , genSignTag
+        , signTags
 
         -- Key Generators
         , keypairs
@@ -13,39 +13,39 @@ module Test.Pos.Crypto.Gen
         , encryptedSecretKeys
 
         -- Redeem Key Generators
-        , genRedeemKeypair
-        , genRedeemPublicKey
-        , genRedeemSecretKey
+        , redeemKeypairs
+        , redeemPublicKeys
+        , redeemSecretKeys
 
         -- VSS Key Generators
-        , genVssKeyPair
-        , genVssPublicKey
+        , vssKeyPairs
+        , vssPublicKeys
 
         -- Proxy Cert and Key Generators
-        , genProxyCert
-        , genProxySecretKey
-        , genProxySignature
+        , proxyCerts
+        , proxySecretKeys
+        , proxySignatures
 
         -- Signature Generators
-        , genSignature
-        , genSignatureEncoded
-        , genSigned
-        , genRedeemSignature
+        , signatures
+        , signatureEncodeds
+        , signeds
+        , redeemSignatures
 
         -- Secret Generators
-        , genSharedSecretData
-        , genSecret
-        , genSecretProof
+        , sharedSecretDatas
+        , secrets
+        , secretProofs
 
         -- Hash Generators
-        , genAbstractHash
+        , abstractHashes
 
         -- Passphrase Generators
         , passPhrases
 
         -- HD Generators
-        , genHDPassphrase
-        , genHDAddressPayload
+        , hDPassphrases
+        , hDAddressPayloads
         ) where
 
 import           Universum
@@ -76,15 +76,15 @@ import           Pos.Crypto.Signing.Redeem (RedeemPublicKey, RedeemSecretKey, Re
 -- Protocol Magic Generator
 ----------------------------------------------------------------------------
 
-genProtocolMagic :: Gen ProtocolMagic
-genProtocolMagic = ProtocolMagic <$> (Gen.int32 Range.constantBounded)
+protocolMagics :: Gen ProtocolMagic
+protocolMagics = ProtocolMagic <$> (Gen.int32 Range.constantBounded)
 
 ----------------------------------------------------------------------------
 -- Sign Tag Generator
 ----------------------------------------------------------------------------
 
-genSignTag :: Gen SignTag
-genSignTag = Gen.element
+signTags :: Gen SignTag
+signTags = Gen.element
         [ SignForTestingOnly
         , SignTx
         , SignRedeemTx
@@ -118,19 +118,19 @@ encryptedSecretKeys = noPassEncrypt <$> secretKeys
 -- Redeem Key Generators
 ----------------------------------------------------------------------------
 
-genRedeemKeypair :: Gen (Maybe (RedeemPublicKey, RedeemSecretKey))
-genRedeemKeypair = redeemDeterministicKeyGen <$> gen32Bytes
+redeemKeypairs :: Gen (Maybe (RedeemPublicKey, RedeemSecretKey))
+redeemKeypairs = redeemDeterministicKeyGen <$> gen32Bytes
 
-genRedeemPublicKey :: Gen (RedeemPublicKey)
-genRedeemPublicKey = do
-    rkp <- genRedeemKeypair
+redeemPublicKeys :: Gen (RedeemPublicKey)
+redeemPublicKeys = do
+    rkp <- redeemKeypairs
     case rkp of
         Nothing      -> error "Error generating a RedeemPublicKey."
         Just (pk, _) -> return pk
 
-genRedeemSecretKey :: Gen (RedeemSecretKey)
-genRedeemSecretKey = do
-    rkp <- genRedeemKeypair
+redeemSecretKeys :: Gen (RedeemSecretKey)
+redeemSecretKeys = do
+    rkp <- redeemKeypairs
     case rkp of
         Nothing      -> error "Error generating a RedeemSecretKey."
         Just (_, sk) -> return sk
@@ -139,111 +139,111 @@ genRedeemSecretKey = do
 -- VSS Key Generators
 ----------------------------------------------------------------------------
 
-genVssKeyPair :: Gen VssKeyPair
-genVssKeyPair =  deterministicVssKeyGen <$> gen32Bytes
+vssKeyPairs :: Gen VssKeyPair
+vssKeyPairs =  deterministicVssKeyGen <$> gen32Bytes
 
-genVssPublicKey :: Gen VssPublicKey
-genVssPublicKey = toVssPublicKey <$> genVssKeyPair
+vssPublicKeys :: Gen VssPublicKey
+vssPublicKeys = toVssPublicKey <$> vssKeyPairs
 
 ----------------------------------------------------------------------------
 -- Proxy Cert and Key Generators
 ----------------------------------------------------------------------------
 
-genProxyCert :: Bi w => ProtocolMagic -> Gen w -> Gen (ProxyCert w)
-genProxyCert pm genW =
-    safeCreateProxyCert pm <$> genSafeSigner <*> publicKeys <*> genW
+proxyCerts :: Bi w => ProtocolMagic -> Gen w -> Gen (ProxyCert w)
+proxyCerts pm ws =
+    safeCreateProxyCert pm <$> safeSigners <*> publicKeys <*> ws
 
-genProxySecretKey :: Bi w => ProtocolMagic -> Gen w -> Gen (ProxySecretKey w)
-genProxySecretKey pm genW =
-    safeCreatePsk pm <$> genSafeSigner <*> publicKeys <*> genW
+proxySecretKeys :: Bi w => ProtocolMagic -> Gen w -> Gen (ProxySecretKey w)
+proxySecretKeys pm ws =
+    safeCreatePsk pm <$> safeSigners <*> publicKeys <*> ws
 
-genProxySignature
+proxySignatures
     :: (Bi w, Bi a)
     => ProtocolMagic
     -> Gen a
     -> Gen w
     -> Gen (ProxySignature w a)
-genProxySignature pm genA genW = do
-    st  <- genSignTag
+proxySignatures pm as ws = do
+    st  <- signTags
     sk  <- secretKeys
-    psk <- genProxySecretKey pm genW
-    a   <- genA
+    psk <- proxySecretKeys pm ws
+    a   <- as
     return $ proxySign pm st sk psk a
 
 ----------------------------------------------------------------------------
 -- Signature Generators
 ----------------------------------------------------------------------------
 
-genSignature :: Bi a => ProtocolMagic -> Gen a -> Gen (Signature a)
-genSignature pm genA = sign pm <$> genSignTag <*> secretKeys <*> genA
+signatures :: Bi a => ProtocolMagic -> Gen a -> Gen (Signature a)
+signatures pm as = sign pm <$> signTags <*> secretKeys <*> as
 
-genSignatureEncoded :: ProtocolMagic -> Gen ByteString -> Gen (Signature a)
-genSignatureEncoded pm genB =
-    signEncoded pm <$> genSignTag <*> secretKeys <*> genB
+signatureEncodeds :: ProtocolMagic -> Gen ByteString -> Gen (Signature a)
+signatureEncodeds pm bs =
+    signEncoded pm <$> signTags <*> secretKeys <*> bs
 
-genSigned :: Bi a => ProtocolMagic -> Gen a -> Gen (Signed a)
-genSigned pm genA =
-    mkSigned pm <$> genSignTag <*> secretKeys <*> genA
+signeds :: Bi a => ProtocolMagic -> Gen a -> Gen (Signed a)
+signeds pm as =
+    mkSigned pm <$> signTags <*> secretKeys <*> as
 
-genRedeemSignature
+redeemSignatures
     ::  Bi a
     => ProtocolMagic
     -> Gen a
     -> Gen (RedeemSignature a)
-genRedeemSignature pm genA =
-    redeemSign pm <$> genSignTag <*> genRedeemSecretKey <*> genA
+redeemSignatures pm as =
+    redeemSign pm <$> signTags <*> redeemSecretKeys <*> as
 
 ----------------------------------------------------------------------------
 -- Secret Generators
 ----------------------------------------------------------------------------
 
-genSharedSecretData :: Gen (Secret, SecretProof, [(VssPublicKey, EncShare)])
-genSharedSecretData = do
+sharedSecretDatas :: Gen (Secret, SecretProof, [(VssPublicKey, EncShare)])
+sharedSecretDatas = do
     let numKeys = 128 :: Int
     parties <-
         Gen.integral (Range.constant 4 (fromIntegral numKeys)) :: Gen Integer
     threshold <- Gen.integral (Range.constant 2 (parties - 2)) :: Gen Integer
-    vssKeys <- replicateM numKeys genVssPublicKey
+    vssKeys <- replicateM numKeys vssPublicKeys
     let ss = deterministic "ss" $ genSharedSecret threshold (fromList vssKeys)
     return ss
 
-genSecret :: Gen Secret
-genSecret = do
-    (s, _, _) <- genSharedSecretData
+secrets :: Gen Secret
+secrets = do
+    (s, _, _) <- sharedSecretDatas
     return s
 
-genSecretProof :: Gen SecretProof
-genSecretProof = do
-    (_, sp, _) <- genSharedSecretData
+secretProofs :: Gen SecretProof
+secretProofs = do
+    (_, sp, _) <- sharedSecretDatas
     return sp
 
 ----------------------------------------------------------------------------
 -- Hash Generators
 ----------------------------------------------------------------------------
 
-genAbstractHash :: Bi a => Gen a -> Gen (AbstractHash Blake2b_256 a)
-genAbstractHash genA = abstractHash <$> genA
+abstractHashes :: Bi a => Gen a -> Gen (AbstractHash Blake2b_256 a)
+abstractHashes as = abstractHash <$> as
 
 ----------------------------------------------------------------------------
 -- Passphrase Generators
 ----------------------------------------------------------------------------
 
 passPhrases :: Gen PassPhrase
-passPhrases = ByteArray.pack <$> genWord8List
+passPhrases = ByteArray.pack <$> word8Lists
   where
-    genWord8List :: Gen [Word8]
-    genWord8List =
+    word8Lists :: Gen [Word8]
+    word8Lists =
         Gen.list (Range.singleton 32) (Gen.word8 Range.constantBounded)
 
 ----------------------------------------------------------------------------
 -- HD Generators
 ----------------------------------------------------------------------------
 
-genHDPassphrase :: Gen HDPassphrase
-genHDPassphrase = HDPassphrase <$> gen32Bytes
+hDPassphrases :: Gen HDPassphrase
+hDPassphrases = HDPassphrase <$> gen32Bytes
 
-genHDAddressPayload :: Gen HDAddressPayload
-genHDAddressPayload = HDAddressPayload <$> gen32Bytes
+hDAddressPayloads :: Gen HDAddressPayload
+hDAddressPayloads = HDAddressPayload <$> gen32Bytes
 
 ----------------------------------------------------------------------------
 -- Helper Generators
@@ -254,5 +254,5 @@ genBytes n = Gen.bytes (Range.singleton n)
 gen32Bytes :: Gen ByteString
 gen32Bytes = genBytes 32
 
-genSafeSigner :: Gen SafeSigner
-genSafeSigner = FakeSigner <$> secretKeys
+safeSigners :: Gen SafeSigner
+safeSigners = FakeSigner <$> secretKeys
