@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+
 module Test.Pos.Crypto.Bi
     ( tests
     ) where
@@ -19,21 +20,33 @@ import           Test.Pos.Crypto.Gen
 import           Test.Pos.Crypto.TempHelpers (discoverGolden, discoverRoundTrip, eachOf,
                                               goldenTestBi, roundTripsBiBuildable)
 
+--------------------------------------------------------------------------------
+-- PublicKey
+--------------------------------------------------------------------------------
+
 golden_PublicKey :: Property
-golden_PublicKey = do
-    let Right pkey = PublicKey <$> xpub (getBytes 0 64)
-    goldenTestBi pkey "test/golden/PublicKey"
+golden_PublicKey = goldenTestBi pkey "test/golden/PublicKey"
+  where
+    Right pkey = PublicKey <$> xpub (getBytes 0 64)
 
 roundTripPublicKeyBi :: Property
 roundTripPublicKeyBi = eachOf publicKeys roundTripsBiBuildable
 
+--------------------------------------------------------------------------------
+-- SecretKey
+--------------------------------------------------------------------------------
+
 golden_SecretKey :: Property
-golden_SecretKey = do
-    let Right skey = SecretKey <$> xprv (getBytes 10 128)
-    goldenTestBi skey "test/golden/SecretKey"
+golden_SecretKey = goldenTestBi skey "test/golden/SecretKey"
+  where
+    Right skey = SecretKey <$> xprv (getBytes 10 128)
 
 roundTripSecretKeyBi :: Property
 roundTripSecretKeyBi = eachOf secretKeys roundTripsBiBuildable
+
+--------------------------------------------------------------------------------
+-- EncryptedSecretKey
+--------------------------------------------------------------------------------
 
 {-
 Currently cannot roundtrip test EncryptedSecretKey because one of its components,
@@ -49,20 +62,23 @@ roundTripEncryptedSecretKeysBi :: Property
 roundTripEncryptedSecretKeysBi = eachOf encryptedSecretKeys roundTripsBiBuildable
 -}
 
+--------------------------------------------------------------------------------
+-- PassPhrase
+--------------------------------------------------------------------------------
+
 golden_PassPhrase :: Property
-golden_PassPhrase = do
+golden_PassPhrase = goldenTestBi passphrase "test/golden/PassPhrase"
+  where
     -- PassPhrase has to be 32 bytes in length
-    let passphrase = ByteArray.pack (BS.unpack $ getBytes 3 32) :: PassPhrase
-    goldenTestBi passphrase "test/golden/PassPhrase"
+    passphrase = ByteArray.pack (BS.unpack $ getBytes 3 32) :: PassPhrase
 
 roundTripPassPhraseBi :: Property
 roundTripPassPhraseBi = eachOf passPhrases roundTripsBiBuildable
 
--- ----------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 getBytes :: Int -> Int -> ByteString
-getBytes offset len =
-    BS.take len $ BS.drop offset constantByteString
+getBytes offset len = BS.take len $ BS.drop offset constantByteString
 
 -- | Changing existing values in this string will break existing golden
 -- tests, but it us OK to append more data to the end.
@@ -75,9 +91,8 @@ constantByteString =
     \zFfuRDKvdrL6sDkuPNPYqxMWlqnXjSbU0eLtceZuKgXLHR8cdvsEvywt4JaZUQhnbq3Vl\
     \7nZqcXdoi4XGTCgSGcGp8N0SDVhvkVh0QF1RVpWPnOMyYISJvuaHfo1zXMdq9tEdtJfID"
 
--- -----------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 tests :: IO Bool
-tests = do
-  (&&) <$> H.checkSequential $$discoverGolden
-        <*> H.checkParallel $$discoverRoundTrip
+tests = (&&) <$> H.checkSequential $$discoverGolden
+             <*> H.checkParallel $$discoverRoundTrip
