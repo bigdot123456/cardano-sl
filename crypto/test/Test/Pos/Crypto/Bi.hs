@@ -15,8 +15,9 @@ import           Hedgehog (Property)
 import qualified Hedgehog as H
 
 import           Pos.Aeson.Crypto ()
-import           Pos.Crypto (HDAddressPayload, PassPhrase, PublicKey (..), RedeemPublicKey,
-                             RedeemSecretKey, Secret, SecretKey (..), SecretProof, VssPublicKey)
+import           Pos.Crypto (PassPhrase, PublicKey (..), Secret, SecretKey (..), SecretProof,
+                             deriveHDPassphrase, deterministicVssKeyGen, packHDAddressAttr,
+                             redeemDeterministicKeyGen, toVssPublicKey)
 
 import           Test.Pos.Crypto.Gen
 import           Test.Pos.Crypto.TempHelpers (discoverGolden, discoverRoundTrip, eachOf,
@@ -72,10 +73,10 @@ roundTripEncryptedSecretKeysBi = eachOf encryptedSecretKeys roundTripsBiBuildabl
 -- RedeemPublicKey
 --------------------------------------------------------------------------------
 
-todo_golden_RedeemPublicKey :: Property
-todo_golden_RedeemPublicKey = goldenTestBi
-    (error "golden_RedeemPublicKey not yet defined" :: RedeemPublicKey)
-    "test/golden/RedeemPublicKey"
+golden_RedeemPublicKey :: Property
+golden_RedeemPublicKey = goldenTestBi rpk "test/golden/RedeemPublicKey"
+  where
+    Just rpk = fst <$> redeemDeterministicKeyGen (getBytes 0 32)
 
 roundTripRedeemPublicKeyBi :: Property
 roundTripRedeemPublicKeyBi = eachOf 1000 redeemPublicKeys roundTripsBiBuildable
@@ -84,10 +85,10 @@ roundTripRedeemPublicKeyBi = eachOf 1000 redeemPublicKeys roundTripsBiBuildable
 -- RedeemSecretKey
 --------------------------------------------------------------------------------
 
-todo_golden_RedeemSecretKey :: Property
-todo_golden_RedeemSecretKey = goldenTestBi
-    (error "golden_RedeemSecretKey not yet defined" :: RedeemSecretKey)
-    "test/golden/RedeemSecretKey"
+golden_RedeemSecretKey :: Property
+golden_RedeemSecretKey = goldenTestBi rsk "test/golden/RedeemSecretKey"
+  where
+    Just rsk = snd <$> redeemDeterministicKeyGen (getBytes 0 32)
 
 roundTripRedeemSecretKeyBi :: Property
 roundTripRedeemSecretKeyBi = eachOf 1000 redeemSecretKeys roundTripsBiBuildable
@@ -96,10 +97,10 @@ roundTripRedeemSecretKeyBi = eachOf 1000 redeemSecretKeys roundTripsBiBuildable
 -- VssPublicKey
 --------------------------------------------------------------------------------
 
-todo_golden_VssPublicKey :: Property
-todo_golden_VssPublicKey = goldenTestBi
-    (error "golden_VssPublicKey not yet defined" :: VssPublicKey)
-    "test/golden/VssPublicKey"
+golden_VssPublicKey :: Property
+golden_VssPublicKey = goldenTestBi vpk "test/golden/VssPublicKey"
+  where
+    vpk = toVssPublicKey . deterministicVssKeyGen $ getBytes 0 32
 
 roundTripVssPublicKeyBi :: Property
 roundTripVssPublicKeyBi = eachOf 1000 vssPublicKeys roundTripsBiShow
@@ -108,6 +109,8 @@ roundTripVssPublicKeyBi = eachOf 1000 vssPublicKeys roundTripsBiShow
 -- Secret
 --------------------------------------------------------------------------------
 
+-- | Not done because the constructor for the underlying `Point` type is not
+--   exposed and there is no deterministic generation function
 todo_golden_Secret :: Property
 todo_golden_Secret = goldenTestBi
     (error "golden_Secret not yet defined" :: Secret)
@@ -120,6 +123,7 @@ roundTripSecretBi = eachOf 100 secrets roundTripsBiShow
 -- SecretProof
 --------------------------------------------------------------------------------
 
+-- | We have a similar problem for this
 todo_golden_SecretProof :: Property
 todo_golden_SecretProof = goldenTestBi
     (error "golden_SecretProof not yet defined" :: SecretProof)
@@ -145,10 +149,12 @@ roundTripPassPhraseBi = eachOf 1000 passPhrases roundTripsBiBuildable
 -- HDAddressPayload
 --------------------------------------------------------------------------------
 
-todo_golden_HDAddressPayload :: Property
-todo_golden_HDAddressPayload = goldenTestBi
-    (error "golden_HDAddressPayload not yet defined" :: HDAddressPayload)
-    "test/golden/HDAddressPayload"
+golden_HDAddressPayload :: Property
+golden_HDAddressPayload = goldenTestBi hdap "test/golden/HDAddressPayload"
+  where
+    Right hdap =
+        flip packHDAddressAttr [] . deriveHDPassphrase . PublicKey <$> xpub
+            (getBytes 0 64)
 
 roundTripHDAddressPayloadBi :: Property
 roundTripHDAddressPayloadBi = eachOf 1000 hDAddressPayloads roundTripsBiShow
