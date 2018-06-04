@@ -125,7 +125,7 @@ artifacts:
     name: CardanoSL
     type: zip
   - path: daedalus/
-    name: "$(APPVEYOR_REPO_COMMIT)"
+    name: $(APPVEYOR_REPO_COMMIT)
     type: zip
 deploy:
   provider: S3
@@ -137,4 +137,4 @@ deploy:
   region: eu-west-1
   set_public: true
   folder: cardano-sl
-  artifact: "$(APPVEYOR_REPO_COMMIT)"
+  artifact: $(APPVEYOR_REPO_COMMIT)
